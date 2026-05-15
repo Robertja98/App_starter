@@ -1,0 +1,37 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"[php]": {
+			"editor.defaultFormatter": "bmewburn.vscode-intelephense-client",
+			"editor.formatOnSave": true
+		},
+		"[javascript]": {
+			"editor.defaultFormatter": "esbenp.prettier-vscode",
+			"editor.formatOnSave": true
+		},
+		"files.exclude": {
+			"**/.git": true,
+			"**/node_modules": true,
+			"**/vendor": true,
+			"**/*.log": true
+		},
+		"search.exclude": {
+			"**/vendor": true,
+			"**/node_modules": true,
+			"**/storage/uploads": true
+		}
+	},
+	"extensions": {
+		"recommendations": [
+			"bmewburn.vscode-intelephense-client",
+			"felixbecker.php-debug",
+			"esbenp.prettier-vscode",
+			"humao.rest-client",
+			"rangav.vscode-thunder-client"
+		]
+	}
+}

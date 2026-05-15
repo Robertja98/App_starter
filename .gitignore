@@ -1,0 +1,40 @@
+# Environment config
+config/app.local.php
+
+# Logs and debug
+*.log
+debug_log.txt
+error_log.txt
+transaction_log.txt
+
+# OS and editor
+.DS_Store
+.vscode/settings.json
+.idea/
+Thumbs.db
+
+# Uploads and media (user-generated)
+storage/uploads/*
+!storage/uploads/.gitkeep
+
+# PHP session files
+session/*
+!session/.gitkeep
+
+# Composer and dependencies
+vendor/
+composer.lock
+
+# Build artifacts
+dist/
+node_modules/
+
+# Temporary and test files
+tmp/
+temp/
+*.tmp
+.tmp/
+
+# Database backups
+database/backups/*
+!database/backups/.gitkeep

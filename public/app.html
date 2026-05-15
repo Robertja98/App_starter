@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en-CA">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Field service app for water treatment equipment inspections">
+    <meta name="theme-color" content="#2c3e50">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+    <link rel="stylesheet" href="/css/tablet-ui.css">
+    <title>Service App</title>
+</head>
+<body>
+    <div id="app">
+        <!-- Root container for app shell -->
+        <div class="app-header">
+            <h1>Service App</h1>
+            <div class="user-info">
+                <span id="current-user">Loading...</span>
+                <button id="logout-btn" class="btn-secondary">Logout</button>
+            </div>
+        </div>
+
+        <main class="app-main">
+            <div id="page-container">
+                <!-- Dynamic page content loaded here -->
+            </div>
+        </main>
+
+        <div class="app-footer">
+            <p>Offline: <span id="sync-status">Checking connection...</span></p>
+        </div>
+    </div>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/js/sw.js').catch(err => {
+                console.log('Service Worker registration failed:', err);
+            });
+        }
+    </script>
+
+    <script src="/js/sync-queue.js"></script>
+    <script src="/js/visit-form.js"></script>
+</body>
+</html>
