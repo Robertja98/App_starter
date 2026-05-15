@@ -425,7 +425,7 @@ function runSmokeSuite(string $repoRoot, string $baseUrl): void
         assertTrue($csrfResponse['status'] === 200, 'CSRF endpoint did not return 200');
         $csrfToken = $csrfResponse['body']['data']['csrf_token'] ?? null;
         assertTrue(is_string($csrfToken) && $csrfToken !== '', 'CSRF token missing from response');
-        assertTrue(isset($cookieJar['service_app_session']), 'Session cookie missing after CSRF bootstrap');
+        assertTrue(isset($cookieJar[$config['session']['name'] ?? 'service_app_session']), 'Session cookie missing after CSRF bootstrap');
         echo "[PASS] CSRF bootstrap\n";
 
         $loginResponse = request('POST', $baseUrl . '/api/auth/login', [

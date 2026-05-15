@@ -43,7 +43,7 @@ session_set_cookie_params([
     'httponly' => !empty($config['session']['cookie_httponly']),
     'samesite' => $config['session']['cookie_samesite'] ?? 'Lax',
 ]);
-session_name('service_app_session');
+session_name($config['session']['name'] ?? 'service_app_session');
 session_start();
 
 // Load database layer
