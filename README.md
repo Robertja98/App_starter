@@ -5,6 +5,17 @@ A reusable PHP + MySQL + PWA starter for applications that need centralized boot
 **Stack**: PHP 8.x + MySQL + PWA (vanilla JS + service worker)  
 **Hosting**: GoDaddy shared hosting (PHP + MySQL support required)
 
+## Start A New App
+
+1. Clone this repository.
+2. Run `./bootstrap-starter.ps1 -AppName "Your App" -AppSlug "your_app" -AdminEmail "owner@example.com" -AdminPassword "StrongPassword123!" -Preview`.
+3. Re-run the same command without `-Preview`.
+4. Copy `config/app.local.example.php` to `config/app.local.php` and fill in local secrets.
+5. Replace the reference schema, models, controllers, and `smokeTemplateProfile()` values in `tests/backend_smoke.php`.
+6. Run `./validate-backend.ps1` before feature work.
+
+Use [TEMPLATE_GUIDE.md](C:/Users/rober/OneDrive/0.5-Eclipse/Service%20App/TEMPLATE_GUIDE.md) for the full extraction sequence and [LOCAL_TESTING_GUIDE.md](C:/Users/rober/OneDrive/0.5-Eclipse/Service%20App/LOCAL_TESTING_GUIDE.md) for local setup and validation.
+
 ## Project Structure
 
 ```
