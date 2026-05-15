@@ -146,6 +146,8 @@ For a new app:
 6. Keep the generic bootstrap, auth, logging, validation, and gate layers unless the new app has a simpler stack.
 7. Keep `validate-backend.ps1` as the single backend validation entrypoint.
 
+Use `lessons_learned.md` only for starter-level engineering rules that should carry into future derived apps. If a lesson is specific to one derived app's domain, schema, or workflow, document it in that app instead of feeding it back into the starter by default.
+
 ## Reference Capabilities Included
 
 ### Authentication & Authorization

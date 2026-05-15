@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Use this file to capture repo-specific rules, mistakes, and verified debugging patterns that should influence future implementation work in this Service App.
+Use this file to capture reusable engineering rules, mistakes, and verified debugging patterns that should influence future implementation work in this starter and any app derived from it.
 
 ## Architecture Rules
 
 - Keep session configuration and `session_start()` in exactly one bootstrap layer.
-- In this app, `app/bootstrap.php` owns session startup and entrypoints such as `public/index.php` must not call `session_set_cookie_params()`, `session_name()`, or `session_start()` again.
+- In this starter, `app/bootstrap.php` owns session startup and entrypoints such as `public/index.php` must not call `session_set_cookie_params()`, `session_name()`, or `session_start()` again.
 - Treat session setup like database bootstrap: centralize it once, then consume the initialized state downstream.
 - Keep browser auth and non-browser auth separate by design: use session + CSRF for frontend users, and scoped API keys only for device/server integrations. Do not embed API keys in browser JavaScript.
 - Centralize transaction logging in one service instead of scattering controller-specific log formats. Request logging, validation failures, security events, and audit actions should all flow through the same layer so they can be searched and compared consistently.
@@ -41,7 +41,7 @@ Use this file to capture repo-specific rules, mistakes, and verified debugging p
 
 - When PHP reports that a session is already active, inspect the earliest required bootstrap file first before changing the entrypoint.
 - Duplicate session initialization causes runtime warnings like "Session cookie parameters cannot be changed when a session is active" and usually means ownership of request bootstrap concerns has drifted.
-- For this app, `app/bootstrap.php` is the controlling code path for session startup and should remain the single source of truth.
+- In derived apps, `app/bootstrap.php` should remain the controlling code path for session startup unless the bootstrap architecture is deliberately replaced end to end.
 - If direct CLI execution of `public/index.php` does not reproduce a browser warning, the current source and the served runtime are out of sync; restart the active PHP/web server before assuming the code fix failed.
 - `config/app.local.php` must begin with the exact `<?php` bytes and no UTF-8 BOM. A BOM in local config emits output before headers and causes redirect/header failures that can distract from the main bug.
 - If the app shell renders but placeholders like "Loading..." or "Checking connection..." remain, treat PHP bootstrap as likely healthy enough to serve the page and move debugging to frontend boot logic, browser console errors, auth/user fetches, service worker state, and API connectivity.
@@ -58,5 +58,5 @@ Use this file to capture repo-specific rules, mistakes, and verified debugging p
 ## Review Rule
 
 - Read this file before starting a new feature or module.
-- Update this file when a bug fix reveals a reusable project-specific rule.
+- Update this file when a bug fix reveals a reusable starter-level rule. If a lesson is domain-specific to a derived app, move it into that app's own documentation instead of preserving it here by default.
 - Keep one executable backend smoke entrypoint in the repo root for local validation. If a regression suite requires multiple manual commands, it will be skipped in normal development.
