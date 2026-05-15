@@ -12,22 +12,22 @@ return [
         'host'     => getenv('DB_HOST') ?: 'localhost',
         'user'     => getenv('DB_USER') ?: 'root',
         'password' => getenv('DB_PASS') ?: '',
-        'database' => getenv('DB_NAME') ?: 'service_app',
+        'database' => getenv('DB_NAME') ?: 'app_local_dev',
         'charset'  => 'utf8mb4',
     ],
 
     // Application
     'app' => [
-        'name'      => getenv('APP_NAME') ?: 'Water Treatment Service App',
-        'short_name' => getenv('APP_SHORT_NAME') ?: 'Service App',
-        'description' => getenv('APP_DESCRIPTION') ?: 'Field service app for water treatment equipment inspections and service visits',
+        'name'      => getenv('APP_NAME') ?: 'My App Starter',
+        'short_name' => getenv('APP_SHORT_NAME') ?: 'My App',
+        'description' => getenv('APP_DESCRIPTION') ?: 'Offline-capable PHP and MySQL application starter',
         'debug'     => filter_var(getenv('APP_DEBUG') ?: false, FILTER_VALIDATE_BOOLEAN),
         'timezone'  => getenv('APP_TIMEZONE') ?: 'America/Toronto',
     ],
 
     // Session & Security
     'session' => [
-        'name' => getenv('SESSION_NAME') ?: 'service_app_session',
+        'name' => getenv('SESSION_NAME') ?: 'app_session',
         'lifetime'   => 1440, // 24 hours in minutes
         'cookie_secure' => true, // HTTPS only
         'cookie_httponly' => true,
@@ -51,7 +51,7 @@ return [
     'security' => [
         'encryption_key' => getenv('APP_KEY') ?: '',
         'api_key_header' => 'X-API-Key',
-        'api_key_prefix' => getenv('API_KEY_PREFIX') ?: 'svcapp_',
+        'api_key_prefix' => getenv('API_KEY_PREFIX') ?: 'app_',
         'api_key_hash_algo' => 'sha256',
         'session_idle_timeout' => 60 * 60 * 12,
         'session_fingerprint_mode' => 'user_agent_ip_prefix',

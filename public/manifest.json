@@ -1,7 +1,7 @@
 {
-  "name": "Water Treatment Service App",
-  "short_name": "Service App",
-  "description": "Field service app for water treatment equipment inspections and service visits",
+  "name": "My App Starter",
+  "short_name": "My App",
+  "description": "Offline-capable PHP and MySQL application starter",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

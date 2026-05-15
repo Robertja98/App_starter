@@ -10,7 +10,7 @@ cd "C:\Users\rober\OneDrive\0.5-Eclipse\Service App"
 # Copy local config template first if this is a fresh clone
 Copy-Item .\config\app.local.example.php .\config\app.local.php
 
-# Run database setup (creates service_app_dev DB, imports schema, and seeds admin user)
+# Run database setup (creates app_local_dev DB, imports schema, and seeds admin user)
 .\setup-local-db.ps1 -MySqlPassword admin
 ```
 

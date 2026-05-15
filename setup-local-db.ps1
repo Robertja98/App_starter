@@ -2,7 +2,7 @@
 # Creates local development database and imports schema
 #
 # Usage:
-#   .\setup-local-db.ps1 -MySqlUser root -MySqlPassword "" -DbName service_app_dev
+#   .\setup-local-db.ps1 -MySqlUser root -MySqlPassword "" -DbName app_local_dev
 #
 # Prerequisites:
 #   - MySQL installed and in PATH (or full path specified)
@@ -11,7 +11,7 @@
 param(
     [string]$MySqlUser = "root",
     [string]$MySqlPassword = "",
-    [string]$DbName = "service_app_dev",
+    [string]$DbName = "app_local_dev",
     [string]$MySqlPath = "mysql",
     [string]$AdminEmail = "admin@example.com",
     [string]$AdminPassword = "password123",
@@ -112,9 +112,9 @@ Write-Host ""
 
 # Seed default admin user for local API testing
 Write-Host "Seeding default admin user..." -ForegroundColor Green
-$env:SERVICE_APP_ADMIN_PASSWORD = $AdminPassword
-$adminHash = & php -r "echo password_hash(getenv('SERVICE_APP_ADMIN_PASSWORD'), PASSWORD_BCRYPT, ['cost' => 12]);"
-Remove-Item Env:SERVICE_APP_ADMIN_PASSWORD -ErrorAction SilentlyContinue
+$env:APP_STARTER_ADMIN_PASSWORD = $AdminPassword
+$adminHash = & php -r "echo password_hash(getenv('APP_STARTER_ADMIN_PASSWORD'), PASSWORD_BCRYPT, ['cost' => 12]);"
+Remove-Item Env:APP_STARTER_ADMIN_PASSWORD -ErrorAction SilentlyContinue
 
 $escapedAdminEmail = Escape-SqlValue $AdminEmail
 $escapedAdminName = Escape-SqlValue $AdminName
