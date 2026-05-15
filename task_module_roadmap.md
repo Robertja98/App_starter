@@ -6,10 +6,12 @@ Use this file to track planned modules, current implementation status, dependenc
 
 ## Project Snapshot
 
-- Project: Water Treatment Service App
+- Project: Starter Template Baseline
 - Stack: PHP, MySQL, PWA frontend
-- Deployment target: GoDaddy shared hosting
-- Primary workflow: Tablet-first onsite service visits with offline-first sync
+- Deployment target: Shared PHP hosting with MySQL
+- Primary workflow: Authenticated CRUD plus offline-capable sync patterns
+
+The module rows below are reference-domain examples carried by the starter. Replace them early when deriving a new application.
 
 ## Module Status
 

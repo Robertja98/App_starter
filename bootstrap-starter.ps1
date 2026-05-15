@@ -71,8 +71,8 @@ $workspaceOld = Join-Path $scriptPath 'Service App.code-workspace'
 $workspaceNew = Join-Path $scriptPath ($workspaceTitle + '.code-workspace')
 
 $replacements = @(
-    @{ Path = Join-Path $scriptPath 'README.md'; Old = '# Water Treatment Service App'; New = '# ' + $AppName },
-    @{ Path = Join-Path $scriptPath 'WORKLOG.md'; Old = '# WORKLOG – Water Treatment Service App'; New = '# WORKLOG – ' + $AppName },
+    @{ Path = Join-Path $scriptPath 'README.md'; Old = '# PHP MySQL PWA Starter'; New = '# ' + $AppName },
+    @{ Path = Join-Path $scriptPath 'WORKLOG.md'; Old = '# WORKLOG – PHP MySQL PWA Starter'; New = '# WORKLOG – ' + $AppName },
     @{ Path = Join-Path $scriptPath 'config\app.local.example.php'; Old = "'name' => 'My App Starter'"; New = "'name' => '" + $AppName + "'" },
     @{ Path = Join-Path $scriptPath 'config\app.local.example.php'; Old = "'database' => 'app_local_dev'"; New = "'database' => '" + $DatabaseName + "'" },
     @{ Path = Join-Path $scriptPath 'config\app.php'; Old = "'database' => getenv('DB_NAME') ?: 'service_app'"; New = "'database' => getenv('DB_NAME') ?: '" + $DatabaseName + "'" },

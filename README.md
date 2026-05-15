@@ -1,6 +1,6 @@
-# Water Treatment Service App
+# PHP MySQL PWA Starter
 
-A tablet-first, offline-capable Progressive Web App for field technicians to perform onsite service inspections and maintenance on water treatment equipment.
+A reusable PHP + MySQL + PWA starter for applications that need centralized bootstrap ownership, session auth + CSRF, scoped API keys, request and audit logging, offline-capable sync flows, and a one-command backend validation gate.
 
 **Stack**: PHP 8.x + MySQL + PWA (vanilla JS + service worker)  
 **Hosting**: GoDaddy shared hosting (PHP + MySQL support required)
@@ -45,9 +45,9 @@ tests/                  # Integration and unit tests
 
 ## Getting Started
 
-### 1. Deploy to GoDaddy Hosting
+### 1. Deploy to Shared PHP Hosting
 
-1. **Create a GoDaddy account** with PHP + MySQL support (or upgrade existing plan).
+1. **Provision PHP + MySQL hosting** with file access and database management tools.
 2. **Upload files** via FTP or cPanel File Manager:
    - Map the `/public` directory as your domain's public root.
    - Ensure `config/`, `app/`, `database/`, `storage/` are outside the web root (one level up).
@@ -67,11 +67,11 @@ tests/                  # Integration and unit tests
            'password' => 'db_password',
            'database' => 'db_name',
        ],
-       'mail' => [
+         'mail' => [
            'host' => 'mail.your-domain.com',
            'port' => 587,
-           'from' => 'service@your-domain.com',
-       ],
+           'from' => 'noreply@your-domain.com',
+         ],
    ];
    ```
 
@@ -81,7 +81,7 @@ tests/                  # Integration and unit tests
 
 ### 3. Verify Setup
 
-- Visit `https://your-domain.com/` in a tablet browser.
+- Visit `https://your-domain.com/` in a browser.
 - You should see the PWA shell with "Loading..." text.
 - Check browser console (F12) for errors.
 - Install the app to home screen (browser menu → "Install app" or "Add to Home Screen").
@@ -146,7 +146,7 @@ For a new app:
 6. Keep the generic bootstrap, auth, logging, validation, and gate layers unless the new app has a simpler stack.
 7. Keep `validate-backend.ps1` as the single backend validation entrypoint.
 
-## Core Modules (Phase 1–3 Ready)
+## Reference Capabilities Included
 
 ### Authentication & Authorization
 - Session-based login (email + password).
@@ -161,20 +161,22 @@ For a new app:
 - Sync engine retries with exponential backoff when online.
 - Idempotency keys prevent duplicate submissions on retry.
 
-### Database Schema
+### Reference Schema Included
+This starter currently ships with a field-service reference schema so the backend patterns are executable out of the box. Replace these tables early for a new domain:
+
 - **Users**: auth and role management.
-- **Customers**: client records.
-- **Sites**: customer locations.
-- **Equipment**: tanks, pumps, filters, etc.
-- **Service Visits**: main workflow record.
-- **Measurements**: chemical readings (pH, chlorine, etc.).
-- **Consumables**: replaced parts tracking.
+- **Customers**: account records.
+- **Sites**: location records.
+- **Equipment**: tracked assets.
+- **Service Visits**: primary workflow record.
+- **Measurements**: structured readings.
+- **Consumables**: materials used.
 - **Repair Recommendations**: maintenance findings.
 - **Media**: photos and attachments.
 - **Invoices**: optional billing records.
 - **Audit Log**: compliance trail.
 
-## API Endpoints (To Implement)
+## Reference API Surface
 
 ### Authentication
 - `GET /api/auth/csrf` — issue session CSRF token for browser clients
@@ -182,7 +184,7 @@ For a new app:
 - `POST /api/auth/logout` — session end
 - `GET /api/auth/user` — current user info
 
-### Field Operations
+### Reference Domain Endpoints
 - `GET /api/sites` — list active sites
 - `GET /api/equipment?site_id=X` — list equipment at site
 - `POST /api/visits` — submit a service visit

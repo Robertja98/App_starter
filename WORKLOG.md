@@ -1,7 +1,7 @@
-# WORKLOG – Water Treatment Service App
+# WORKLOG – PHP MySQL PWA Starter
 
 ## Summary
-Tablet-first PWA for onsite water treatment equipment inspections, built on PHP + MySQL + PWA, hosted on GoDaddy shared hosting. Supports offline-first workflows with sync queue for resilience.
+Reusable PHP + MySQL + PWA starter with centralized bootstrap, auth + CSRF, API-key integration support, logging, offline-capable sync flows, and an executable backend validation gate.
 
 ## Standards Applied (from lessons_learned.md)
 
