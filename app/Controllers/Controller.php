@@ -97,12 +97,22 @@ class Controller {
 
         $record = $this->apiKeyAuth->authenticate($scopes);
         if (!$record) {
+            $failureReason = method_exists($this->apiKeyAuth, 'getLastFailureReason')
+                ? $this->apiKeyAuth->getLastFailureReason()
+                : null;
+
             if ($this->transactionLogger instanceof TransactionLogger) {
                 $this->transactionLogger->logSecurityEvent('api_key_required_failed', [
                     'controller' => static::class,
                     'scopes' => $scopes,
+                    'reason' => $failureReason,
                 ]);
             }
+
+            if ($failureReason === 'insufficient_scope') {
+                $this->forbidden('API key lacks required scope');
+            }
+
             $this->error('Valid API key required', 401);
         }
 

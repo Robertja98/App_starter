@@ -559,8 +559,8 @@ function runSmokeSuite(string $repoRoot, string $baseUrl): void
             $anonymousCookies,
             ['X-API-Key: ' . $wrongScopeApiKey['api_key']]
         );
-        assertTrue($wrongScopeSyncResponse['status'] === 401, 'Wrong-scope API key should be rejected with 401');
-        assertTrue(($wrongScopeSyncResponse['body']['message'] ?? null) === 'Valid API key required', 'Wrong-scope API key returned the wrong error');
+        assertTrue($wrongScopeSyncResponse['status'] === 403, 'Wrong-scope API key should be rejected with 403');
+        assertTrue(($wrongScopeSyncResponse['body']['message'] ?? null) === 'API key lacks required scope', 'Wrong-scope API key returned the wrong error');
         echo "[PASS] Sync endpoint rejects wrong-scope API key\n";
 
         $apiKeySyncResponse = request(

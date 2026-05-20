@@ -7,6 +7,7 @@ class ApiKeyMiddleware {
     private $config;
     private $db;
     private $currentKey = null;
+    private $lastFailureReason = null;
 
     public function __construct($config, Database $db) {
         $this->config = $config;
@@ -14,8 +15,10 @@ class ApiKeyMiddleware {
     }
 
     public function authenticate(array $requiredScopes = []) {
+        $this->lastFailureReason = null;
         $apiKey = $this->extractApiKey();
         if (!$apiKey) {
+            $this->lastFailureReason = 'missing_api_key';
             return null;
         }
 
@@ -23,12 +26,14 @@ class ApiKeyMiddleware {
         $hash = hashApiKeyValue($apiKey, $this->config);
         $record = $model->findActiveByHash($hash);
         if (!$record) {
+            $this->lastFailureReason = 'invalid_or_expired_key';
             return null;
         }
 
         $grantedScopes = $model->getScopes($record);
         foreach ($requiredScopes as $scope) {
             if (!in_array($scope, $grantedScopes, true)) {
+                $this->lastFailureReason = 'insufficient_scope';
                 return null;
             }
         }
@@ -37,6 +42,10 @@ class ApiKeyMiddleware {
         $record['granted_scopes'] = $grantedScopes;
         $this->currentKey = $record;
         return $record;
+    }
+
+    public function getLastFailureReason() {
+        return $this->lastFailureReason;
     }
 
     public function getCurrentKey() {

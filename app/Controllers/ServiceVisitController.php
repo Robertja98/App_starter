@@ -122,10 +122,10 @@ class ServiceVisitController extends Controller {
             }
 
             // Add related data
-            $visit['measurements'] = $this->getRelatedData('measurements', 'visit_id', $visitId);
-            $visit['consumables'] = $this->getRelatedData('consumables_used', 'visit_id', $visitId);
-            $visit['repairs'] = $this->getRelatedData('repair_recommendations', 'visit_id', $visitId);
-            $visit['media'] = $this->getRelatedData('media_items', 'visit_id', $visitId);
+            $visit['measurements'] = $this->getRelatedData('measurements', $visitId);
+            $visit['consumables'] = $this->getRelatedData('consumables', $visitId);
+            $visit['repairs'] = $this->getRelatedData('repairs', $visitId);
+            $visit['media'] = $this->getRelatedData('media', $visitId);
 
             $this->success($visit, 200);
         } catch (Exception $e) {
@@ -291,7 +291,23 @@ class ServiceVisitController extends Controller {
     /**
      * Helper: Get related data for a visit
      */
-    private function getRelatedData($table, $foreignKeyColumn, $visitId) {
+    private function getRelatedData($type, $visitId) {
+        $allowedSources = [
+            'measurements' => ['table' => 'measurements', 'column' => 'visit_id'],
+            'consumables' => ['table' => 'consumables_used', 'column' => 'visit_id'],
+            'repairs' => ['table' => 'repair_recommendations', 'column' => 'visit_id'],
+            'media' => ['table' => 'media_items', 'column' => 'visit_id'],
+        ];
+
+        if (!isset($allowedSources[$type])) {
+            $this->logError('ServiceVisitController::getRelatedData', 'Unknown related-data source: ' . $type);
+            return [];
+        }
+
+        $source = $allowedSources[$type];
+        $table = $source['table'];
+        $foreignKeyColumn = $source['column'];
+
         try {
             $stmt = $this->db->execute(
                 "SELECT * FROM $table WHERE $foreignKeyColumn = ? ORDER BY created_at DESC",
