@@ -11,8 +11,55 @@
 
 require_once __DIR__ . '/../Models/Site.php';
 require_once __DIR__ . '/../Models/Customer.php';
+require_once __DIR__ . '/../Models/ServiceVisit.php';
 
 class SiteController extends Controller {
+
+    /**
+     * GET /api/sites/{id}/history
+     * Return aggregate history metrics and recent visits for a site.
+     */
+    public function history($siteId) {
+        $this->requireAuth();
+
+        if (!is_numeric($siteId)) {
+            $this->badRequest('Invalid site ID');
+        }
+
+        $siteModel = new Site($this->db);
+        $visitModel = new ServiceVisit($this->db);
+        $limit = (int)($this->getQuery('limit') ?: 10);
+        if ($limit < 1) {
+            $limit = 10;
+        }
+        if ($limit > 100) {
+            $limit = 100;
+        }
+
+        try {
+            $site = $siteModel->find($siteId);
+            if (!$site) {
+                $this->error('Site not found', 404);
+            }
+
+            $metrics = $visitModel->getSiteHistoryMetrics((int)$siteId);
+            $recentVisits = $visitModel->getRecentBySite((int)$siteId, $limit);
+
+            $this->success([
+                'site' => [
+                    'id' => (int)$site['id'],
+                    'site_name' => $site['site_name'],
+                    'customer_id' => (int)$site['customer_id'],
+                ],
+                'metrics' => $metrics,
+                'recent_visits' => $recentVisits ?: [],
+                'limit' => $limit,
+            ], 200);
+        } catch (Exception $e) {
+            $this->logError('SiteController::history', $e->getMessage());
+            $this->internalError('Failed to fetch site history');
+        }
+    }
 
     /**
      * GET /api/sites

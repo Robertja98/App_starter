@@ -562,6 +562,37 @@ function runSmokeSuite(string $repoRoot, string $baseUrl): void
         assertTrue(($syncDuplicateResponse['body']['data']['results'][0]['status'] ?? null) === 'duplicate', 'Duplicate sync request did not report duplicate');
         echo "[PASS] Sync duplicate idempotency is enforced\n";
 
+        $recentVisitsResponse = request('GET', $baseUrl . '/api/visits/recent?technician_id=1&limit=5', null, $cookieJar);
+        assertTrue($recentVisitsResponse['status'] === 200, 'Recent visits endpoint should return 200');
+        $recentVisits = $recentVisitsResponse['body']['data']['recent_visits'] ?? [];
+        assertTrue(is_array($recentVisits), 'Recent visits endpoint should return a recent_visits array');
+        assertTrue(($recentVisitsResponse['body']['data']['technician_id'] ?? null) === 1, 'Recent visits endpoint returned the wrong technician id');
+        $foundSyncedVisit = false;
+        foreach ($recentVisits as $visit) {
+            if ((int) ($visit['id'] ?? 0) === (int) $syncedVisitId) {
+                $foundSyncedVisit = true;
+                break;
+            }
+        }
+        assertTrue($foundSyncedVisit, 'Recent visits endpoint did not include the synced visit');
+        echo "[PASS] Recent technician visits endpoint returns expected data\n";
+
+        $siteHistoryResponse = request('GET', $baseUrl . '/api/sites/' . (int) $siteId . '/history?limit=5', null, $cookieJar);
+        assertTrue($siteHistoryResponse['status'] === 200, 'Site history endpoint should return 200');
+        $siteHistoryData = $siteHistoryResponse['body']['data'] ?? [];
+        assertTrue((int) ($siteHistoryData['site']['id'] ?? 0) === (int) $siteId, 'Site history endpoint returned the wrong site');
+        assertTrue((int) ($siteHistoryData['metrics']['total_visits'] ?? 0) >= 1, 'Site history metrics should report at least one visit');
+        assertTrue(is_array($siteHistoryData['recent_visits'] ?? null), 'Site history endpoint should include recent visits');
+        $foundSiteHistoryVisit = false;
+        foreach ($siteHistoryData['recent_visits'] as $visit) {
+            if ((int) ($visit['id'] ?? 0) === (int) $syncedVisitId) {
+                $foundSiteHistoryVisit = true;
+                break;
+            }
+        }
+        assertTrue($foundSiteHistoryVisit, 'Site history endpoint did not include the synced visit');
+        echo "[PASS] Site history metrics endpoint returns aggregates and recent visits\n";
+
         $syncMeasurementKey = 'backend-smoke-sync-measurement-' . bin2hex(random_bytes(4));
         $syncConsumableKey = 'backend-smoke-sync-consumable-' . bin2hex(random_bytes(4));
         $auditBeforeMeasurementAndConsumableSync = fetchAuditCount($db);

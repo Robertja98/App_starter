@@ -15,6 +15,48 @@ require_once __DIR__ . '/../Models/Equipment.php';
 class ServiceVisitController extends Controller {
 
     /**
+     * GET /api/visits/recent
+     * Return recent visits for a technician.
+     */
+    public function recent() {
+        $this->requireAuth();
+
+        $model = new ServiceVisit($this->db);
+        $requestedTechnicianId = $this->getQuery('technician_id');
+        $limit = (int)($this->getQuery('limit') ?: 10);
+        if ($limit < 1) {
+            $limit = 10;
+        }
+        if ($limit > 100) {
+            $limit = 100;
+        }
+
+        $currentUser = $this->getUser();
+        $currentUserId = (int)($currentUser['id'] ?? 0);
+        $currentRole = $currentUser['role'] ?? '';
+
+        if ($currentRole === 'technician') {
+            $technicianId = $currentUserId;
+        } elseif ($requestedTechnicianId && is_numeric($requestedTechnicianId)) {
+            $technicianId = (int)$requestedTechnicianId;
+        } else {
+            $this->badRequest('technician_id is required for non-technician users');
+        }
+
+        try {
+            $visits = $model->getRecentByTechnician($technicianId, $limit);
+            $this->success([
+                'technician_id' => $technicianId,
+                'recent_visits' => $visits ?: [],
+                'limit' => $limit,
+            ], 200);
+        } catch (Exception $e) {
+            $this->logError('ServiceVisitController::recent', $e->getMessage());
+            $this->internalError('Failed to fetch recent visits');
+        }
+    }
+
+    /**
      * GET /api/visits
      * List service visits
      * 

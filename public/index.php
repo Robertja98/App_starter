@@ -57,6 +57,9 @@ if (strpos($path, '/api/') === 0) {
     if (strpos($path, '/api/sites') === 0) {
         require_once __DIR__ . '/../app/Controllers/SiteController.php';
         $controller = new SiteController($config, $db, $auth, $apiKeyAuth);
+
+        $historyMatch = preg_match('~^/api/sites/(\d+)/history(?:/|$)~', $path, $historyMatches);
+        $historyId = $historyMatch ? $historyMatches[1] : null;
         
         // Extract ID from path if present
         $pathMatch = preg_match('~^/api/sites/(\d+)(?:/|$)~', $path, $matches);
@@ -64,6 +67,8 @@ if (strpos($path, '/api/') === 0) {
         
         if ($path === '/api/sites' && $method === 'GET') {
             $controller->index();
+        } elseif ($historyMatch && $method === 'GET') {
+            $controller->history($historyId);
         } elseif ($pathMatch && $method === 'GET') {
             $controller->show($id);
         } elseif ($path === '/api/sites' && $method === 'POST') {
@@ -101,6 +106,10 @@ if (strpos($path, '/api/') === 0) {
     if (strpos($path, '/api/visits') === 0) {
         require_once __DIR__ . '/../app/Controllers/ServiceVisitController.php';
         $controller = new ServiceVisitController($config, $db, $auth, $apiKeyAuth);
+
+        if ($path === '/api/visits/recent' && $method === 'GET') {
+            $controller->recent();
+        }
         
         // Extract ID and sub-action from path
         $pathMatch = preg_match('~^/api/visits/(\d+)(?:/(complete|sync))?(?:/|$)~', $path, $matches);
