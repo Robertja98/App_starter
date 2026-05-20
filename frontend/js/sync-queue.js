@@ -11,6 +11,12 @@ class SyncQueue {
         this.isOnline = navigator.onLine;
         this.isSyncing = false;
         this.csrfToken = null;
+        this.telemetry = {
+            queuedVisits: 0,
+            queuedMedia: 0,
+            lastError: '',
+            lastSyncAt: '',
+        };
         this.initIndexedDB();
         this.setupListeners();
         this.updateSyncStatus();
@@ -29,6 +35,7 @@ class SyncQueue {
         request.onsuccess = (event) => {
             this.db = event.target.result;
             console.log('IndexedDB initialized');
+            this.updateSyncStatus();
         };
 
         request.onupgradeneeded = (event) => {
@@ -79,6 +86,7 @@ class SyncQueue {
 
             request.onsuccess = () => {
                 console.log('Visit queued:', request.result);
+                this.updateSyncStatus();
                 resolve(true);
             };
 
@@ -116,6 +124,7 @@ class SyncQueue {
 
             request.onsuccess = () => {
                 console.log('Media metadata queued:', request.result);
+                this.updateSyncStatus();
                 resolve(true);
             };
 
@@ -134,8 +143,17 @@ class SyncQueue {
             return;
         }
 
+        const pendingCounts = await this.getPendingCounts();
+        if ((pendingCounts.queuedVisits + pendingCounts.queuedMedia) === 0) {
+            this.telemetry.lastError = '';
+            this.telemetry.lastSyncAt = new Date().toISOString();
+            this.renderTelemetry();
+            return;
+        }
+
         this.isSyncing = true;
         console.log('Starting sync...');
+        this.renderTelemetry();
 
         try {
             // Sync queued visits
@@ -143,6 +161,8 @@ class SyncQueue {
 
             // Sync queued media
             await this.syncMedia();
+            this.telemetry.lastError = '';
+            this.telemetry.lastSyncAt = new Date().toISOString();
         } finally {
             this.isSyncing = false;
             this.updateSyncStatus();
@@ -199,9 +219,11 @@ class SyncQueue {
                 console.log('Visit synced:', visit.id);
             } else {
                 console.error('Visit sync failed:', syncResult);
+                this.setLastError(`Visit sync failed (item ${visit.id || 'unknown'})`);
             }
         } catch (error) {
             console.error('Visit submit error:', error);
+            this.setLastError('Visit sync failed due to network or server error');
         }
     }
 
@@ -254,9 +276,11 @@ class SyncQueue {
                 console.log('Media synced:', media.id);
             } else {
                 console.error('Media sync failed:', syncResult);
+                this.setLastError(`Media sync failed (item ${media.id || 'unknown'})`);
             }
         } catch (error) {
             console.error('Media upload error:', error);
+            this.setLastError('Media sync failed due to network or server error');
         }
     }
 
@@ -268,6 +292,7 @@ class SyncQueue {
         const token = await this.getCsrfToken();
         if (!token) {
             console.error('Cannot sync without CSRF token');
+            this.setLastError('Cannot sync: missing CSRF token');
             return null;
         }
 
@@ -300,6 +325,7 @@ class SyncQueue {
         }
 
         if (!response.ok) {
+            this.setLastError(`Sync endpoint returned ${response.status}`);
             return { status: 'error', httpStatus: response.status };
         }
 
@@ -331,6 +357,7 @@ class SyncQueue {
             return this.csrfToken;
         } catch (error) {
             console.error('CSRF token fetch failed:', error);
+            this.setLastError('Unable to fetch CSRF token');
             return null;
         }
     }
@@ -368,6 +395,7 @@ class SyncQueue {
             const request = store.delete(id);
 
             request.onsuccess = () => {
+                this.updateSyncStatus();
                 resolve();
             };
         });
@@ -383,6 +411,7 @@ class SyncQueue {
             const request = store.delete(id);
 
             request.onsuccess = () => {
+                this.updateSyncStatus();
                 resolve();
             };
         });
@@ -391,17 +420,88 @@ class SyncQueue {
     /**
      * Update UI sync status indicator.
      */
-    updateSyncStatus() {
+    async updateSyncStatus() {
         const statusEl = document.getElementById('sync-status');
         if (!statusEl) return;
 
+        const counts = await this.getPendingCounts();
+        this.telemetry.queuedVisits = counts.queuedVisits;
+        this.telemetry.queuedMedia = counts.queuedMedia;
+        this.renderTelemetry();
+
         if (this.isOnline) {
-            statusEl.textContent = 'Online - syncing...';
+            if (this.isSyncing) {
+                statusEl.textContent = 'Online - syncing...';
+            } else if ((counts.queuedVisits + counts.queuedMedia) > 0) {
+                statusEl.textContent = 'Online - pending sync';
+                this.syncPending();
+            } else {
+                statusEl.textContent = 'Online - all changes synced';
+            }
             statusEl.classList.remove('offline');
-            this.syncPending();
         } else {
             statusEl.textContent = 'Offline - changes queued';
             statusEl.classList.add('offline');
+        }
+    }
+
+    async getPendingCounts() {
+        if (!this.db) {
+            return { queuedVisits: 0, queuedMedia: 0 };
+        }
+
+        const queuedVisits = await this.countStoreRecords('queued_visits');
+        const queuedMedia = await this.countStoreRecords('queued_media');
+        return { queuedVisits, queuedMedia };
+    }
+
+    countStoreRecords(storeName) {
+        return new Promise((resolve) => {
+            if (!this.db || !this.db.objectStoreNames.contains(storeName)) {
+                resolve(0);
+                return;
+            }
+
+            const transaction = this.db.transaction([storeName], 'readonly');
+            const store = transaction.objectStore(storeName);
+            const request = store.count();
+
+            request.onsuccess = () => resolve(request.result || 0);
+            request.onerror = () => resolve(0);
+        });
+    }
+
+    setLastError(message) {
+        this.telemetry.lastError = message;
+        this.renderTelemetry();
+    }
+
+    renderTelemetry() {
+        const queueEl = document.getElementById('sync-queue-count');
+        const lastSyncEl = document.getElementById('sync-last-success');
+        const errorEl = document.getElementById('sync-last-error');
+
+        if (queueEl) {
+            queueEl.textContent = `Queue: ${this.telemetry.queuedVisits} visits, ${this.telemetry.queuedMedia} media`;
+        }
+
+        if (lastSyncEl) {
+            if (this.telemetry.lastSyncAt) {
+                const date = new Date(this.telemetry.lastSyncAt);
+                lastSyncEl.textContent = `Last sync: ${date.toLocaleString()}`;
+            } else {
+                lastSyncEl.textContent = 'Last sync: not yet';
+            }
+        }
+
+        if (errorEl) {
+            if (this.telemetry.lastError) {
+                errorEl.textContent = `Last error: ${this.telemetry.lastError}`;
+                errorEl.classList.remove('hidden');
+            } else {
+                errorEl.textContent = '';
+                errorEl.classList.add('hidden');
+            }
         }
     }
 

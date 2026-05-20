@@ -75,12 +75,25 @@ body {
     color: #555;
 }
 
+.app-footer p {
+    margin: 0.2rem 0;
+}
+
 #sync-status {
     font-weight: 600;
 }
 
 #sync-status.offline {
     color: #e74c3c;
+}
+
+.sync-error {
+    color: #c0392b;
+    font-weight: 600;
+}
+
+.hidden {
+    display: none;
 }
 
 /* Buttons - Large Touch Targets */

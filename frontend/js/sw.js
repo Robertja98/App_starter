@@ -4,7 +4,7 @@
  * Enables offline functionality, asset caching, and installability.
  */
 
-const CACHE_NAME = 'service-app-v1';
+const CACHE_NAME = 'service-app-v2';
 const OFFLINE_URL = '/';
 
 const ASSETS_TO_CACHE = [

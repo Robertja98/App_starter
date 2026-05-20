@@ -14,6 +14,10 @@ Reusable PHP + MySQL + PWA starter with centralized bootstrap, auth + CSRF, API-
 
 ## Recent Updates
 
+- Added visible sync telemetry in [public/app.html](C:/Users/rober/OneDrive/0.5-Eclipse/Service%20App/public/app.html), [frontend/css/tablet-ui.css](C:/Users/rober/OneDrive/0.5-Eclipse/Service%20App/frontend/css/tablet-ui.css), and [frontend/js/sync-queue.js](C:/Users/rober/OneDrive/0.5-Eclipse/Service%20App/frontend/js/sync-queue.js): footer now shows queued visit/media counts, last successful sync timestamp, and last sync error details. Also fixed a sync-loop edge case by gating automatic replay so online status only triggers sync when queued items exist.
+
+- Bumped service-worker cache version in [frontend/js/sw.js](C:/Users/rober/OneDrive/0.5-Eclipse/Service%20App/frontend/js/sw.js) to invalidate stale cached app-shell HTML/JS after telemetry UI changes.
+
 - Hardened tablet replay behavior in [frontend/js/sync-queue.js](C:/Users/rober/OneDrive/0.5-Eclipse/Service%20App/frontend/js/sync-queue.js): queued visits and media now sync through `/api/sync` with `csrf_token` fetched from `/api/auth/csrf`, include per-item idempotency keys, retry once on token-rotation `403`, and avoid direct writes to CSRF-protected `/api/visits` and `/api/media/upload` endpoints. Updated [frontend/js/sw.js](C:/Users/rober/OneDrive/0.5-Eclipse/Service%20App/frontend/js/sw.js) to use network-only handling for `/api/*` requests so authenticated API responses are no longer cached by the service worker.
 
 - Added [PRODUCTION_RUNBOOK.md](C:/Users/rober/OneDrive/0.5-Eclipse/Service%20App/PRODUCTION_RUNBOOK.md) as a one-page deployment and operations checklist for the validated hosting model (GoDaddy shared PHP backend + offline-capable tablet clients), including security semantics, migration checks, go-live validation, sync/idempotency verification, and day-2 operational monitoring.
