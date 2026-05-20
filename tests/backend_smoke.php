@@ -13,6 +13,8 @@ function smokeTemplateProfile(): array
     return [
         'admin_email' => getenv('SMOKE_ADMIN_EMAIL') ?: 'admin@example.com',
         'admin_password' => getenv('SMOKE_ADMIN_PASSWORD') ?: 'password123',
+        'technician_email' => getenv('SMOKE_TECHNICIAN_EMAIL') ?: 'tech.smoke@example.com',
+        'technician_password' => getenv('SMOKE_TECHNICIAN_PASSWORD') ?: 'password123',
         'site' => [
             'name' => 'Backend Smoke Site',
             'updated_name' => 'Backend Smoke Site Updated',
@@ -259,6 +261,37 @@ function deleteSmokeCustomer(mysqli $db, ?int $id): void
     $stmt->execute();
 }
 
+function createSmokeUser(mysqli $db, string $email, string $password, string $name, string $role): int
+{
+    $passwordHash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+    $stmt = $db->prepare('INSERT INTO users (email, password_hash, name, role, is_active) VALUES (?, ?, ?, ?, 1)');
+    if (!$stmt) {
+        throw new RuntimeException('Failed to prepare smoke user insert: ' . $db->error);
+    }
+
+    $stmt->bind_param('ssss', $email, $passwordHash, $name, $role);
+    if (!$stmt->execute()) {
+        throw new RuntimeException('Failed to insert smoke user: ' . $stmt->error);
+    }
+
+    return (int) $db->insert_id;
+}
+
+function deleteSmokeUser(mysqli $db, ?int $id): void
+{
+    if (!$id) {
+        return;
+    }
+
+    $stmt = $db->prepare('DELETE FROM users WHERE id = ?');
+    if (!$stmt) {
+        return;
+    }
+
+    $stmt->bind_param('i', $id);
+    $stmt->execute();
+}
+
 function extractCookies(array $headers, array &$cookieJar): void
 {
     foreach ($headers as $header) {
@@ -411,6 +444,7 @@ function runSmokeSuite(string $repoRoot, string $baseUrl): void
     $wrongScopeApiKeyId = null;
     $smokeCustomerId = null;
     $smokeEquipmentId = null;
+    $smokeTechnicianId = null;
 
     echo "Running backend smoke tests against {$baseUrl}\n";
 
@@ -420,6 +454,13 @@ function runSmokeSuite(string $repoRoot, string $baseUrl): void
         $wrongScopeApiKey = createSmokeApiKey($db, $config, ['media:write']);
         $wrongScopeApiKeyId = (int) $wrongScopeApiKey['id'];
         $smokeCustomerId = createSmokeCustomer($db, $profile);
+        $smokeTechnicianId = createSmokeUser(
+            $db,
+            $profile['technician_email'],
+            $profile['technician_password'],
+            'Backend Smoke Technician',
+            'technician'
+        );
 
         $csrfResponse = request('GET', $baseUrl . '/api/auth/csrf', null, $cookieJar);
         assertTrue($csrfResponse['status'] === 200, 'CSRF endpoint did not return 200');
@@ -468,6 +509,19 @@ function runSmokeSuite(string $repoRoot, string $baseUrl): void
         assertTrue(($siteUpdateResponse['body']['data']['site_name'] ?? null) === $profile['site']['updated_name'], 'Site update did not persist the new name');
         assertTrue(($siteUpdateResponse['body']['data']['contact_person'] ?? null) === $profile['site']['updated_contact_person'], 'Site update did not persist the new contact person');
         echo "[PASS] Site update succeeds with CSRF\n";
+
+        $technicianVisitResponse = request('POST', $baseUrl . '/api/visits', [
+            'csrf_token' => $csrfToken,
+            'site_id' => (int) $siteId,
+            'technician_id' => (int) $smokeTechnicianId,
+            'visit_status' => 'scheduled',
+            'visit_date' => date('Y-m-d'),
+            'visit_notes' => 'Smoke technician visit',
+        ], $cookieJar);
+        assertTrue($technicianVisitResponse['status'] === 201, 'Technician-assigned visit create should return 201');
+        $technicianVisitId = $technicianVisitResponse['body']['data']['id'] ?? null;
+        assertTrue(is_numeric($technicianVisitId), 'Technician-assigned visit create did not return an id');
+        echo "[PASS] Admin can create technician-assigned visits\n";
 
         $visitResponse = request('POST', $baseUrl . '/api/visits', [
             'site_id' => (int) $siteId,
@@ -576,6 +630,19 @@ function runSmokeSuite(string $repoRoot, string $baseUrl): void
         }
         assertTrue($foundSyncedVisit, 'Recent visits endpoint did not include the synced visit');
         echo "[PASS] Recent technician visits endpoint returns expected data\n";
+
+        $adminTechnicianRecentResponse = request('GET', $baseUrl . '/api/visits/recent?technician_id=' . (int) $smokeTechnicianId . '&limit=5', null, $cookieJar);
+        assertTrue($adminTechnicianRecentResponse['status'] === 200, 'Admin recent-visits query for another technician should return 200');
+        $adminTechnicianRecent = $adminTechnicianRecentResponse['body']['data']['recent_visits'] ?? [];
+        $foundTechnicianVisitViaAdmin = false;
+        foreach ($adminTechnicianRecent as $visit) {
+            if ((int) ($visit['id'] ?? 0) === (int) $technicianVisitId) {
+                $foundTechnicianVisitViaAdmin = true;
+                break;
+            }
+        }
+        assertTrue($foundTechnicianVisitViaAdmin, 'Admin recent-visits query did not include technician-assigned visit');
+        echo "[PASS] Admin can view recent visits for a requested technician\n";
 
         $siteHistoryResponse = request('GET', $baseUrl . '/api/sites/' . (int) $siteId . '/history?limit=5', null, $cookieJar);
         assertTrue($siteHistoryResponse['status'] === 200, 'Site history endpoint should return 200');
@@ -1018,8 +1085,45 @@ function runSmokeSuite(string $repoRoot, string $baseUrl): void
         assertTrue($postLogoutUserResponse['status'] === 401, 'User endpoint should return 401 after logout');
         echo "[PASS] Logout clears authenticated session\n";
 
+        $technicianCsrfBootstrap = request('GET', $baseUrl . '/api/auth/csrf', null, $cookieJar);
+        assertTrue($technicianCsrfBootstrap['status'] === 200, 'Technician CSRF bootstrap did not return 200');
+        $technicianCsrfToken = $technicianCsrfBootstrap['body']['data']['csrf_token'] ?? null;
+        assertTrue(is_string($technicianCsrfToken) && $technicianCsrfToken !== '', 'Technician CSRF token missing from response');
+
+        $technicianLoginResponse = request('POST', $baseUrl . '/api/auth/login', [
+            'csrf_token' => $technicianCsrfToken,
+            'email' => $profile['technician_email'],
+            'password' => $profile['technician_password'],
+        ], $cookieJar);
+        assertTrue($technicianLoginResponse['status'] === 200, 'Technician login did not return 200');
+
+        $technicianRecentScopeResponse = request('GET', $baseUrl . '/api/visits/recent?technician_id=1&limit=10', null, $cookieJar);
+        assertTrue($technicianRecentScopeResponse['status'] === 200, 'Technician recent-visits query should return 200');
+        $technicianRecentScopeData = $technicianRecentScopeResponse['body']['data'] ?? [];
+        assertTrue((int) ($technicianRecentScopeData['technician_id'] ?? 0) === (int) $smokeTechnicianId, 'Technician recent-visits query should be scoped to authenticated technician');
+        $technicianRecentScopeVisits = $technicianRecentScopeData['recent_visits'] ?? [];
+        $foundOwnVisit = false;
+        $foundOtherTechVisit = false;
+        foreach ($technicianRecentScopeVisits as $visit) {
+            $visitId = (int) ($visit['id'] ?? 0);
+            if ($visitId === (int) $technicianVisitId) {
+                $foundOwnVisit = true;
+            }
+            if ($visitId === (int) $syncedVisitId) {
+                $foundOtherTechVisit = true;
+            }
+        }
+        assertTrue($foundOwnVisit, 'Technician recent-visits query did not include own visit');
+        assertTrue(!$foundOtherTechVisit, 'Technician recent-visits query included another technician visit');
+        echo "[PASS] Technician recent visits are scoped to own identity\n";
+
+        $technicianLogoutResponse = request('POST', $baseUrl . '/api/auth/logout', [
+            'csrf_token' => $technicianCsrfToken,
+        ], $cookieJar);
+        assertTrue($technicianLogoutResponse['status'] === 200, 'Technician logout did not return 200');
+
         $afterAuditCount = fetchAuditCount($db);
-        assertTrue(($afterAuditCount - $beforeAuditCount) >= 11, 'Audit log count did not increase as expected');
+        assertTrue(($afterAuditCount - $beforeAuditCount) >= 14, 'Audit log count did not increase as expected');
         assertTrue(auditEntryExists($db, $beforeAuditCount, 'login', 'user_session', 1), 'Missing login audit entry');
         assertTrue(auditEntryExists($db, $beforeAuditCount, 'insert', 'site', (int) $siteId), 'Missing site insert audit entry');
         assertTrue(auditEntryExists($db, $beforeAuditCount, 'update', 'site', (int) $siteId), 'Missing site update audit entry');
@@ -1031,14 +1135,17 @@ function runSmokeSuite(string $repoRoot, string $baseUrl): void
         assertTrue(auditEntryExists($db, $beforeAuditCount, 'update', 'repair_recommendation', (int) $repairId), 'Missing repair update audit entry');
         assertTrue(auditEntryExists($db, $beforeAuditCount, 'delete', 'repair_recommendation', (int) $repairId), 'Missing repair delete audit entry');
         assertTrue(auditEntryExists($db, $beforeAuditCount, 'logout', 'user_session', 1), 'Missing logout audit entry');
+        assertTrue(auditEntryExists($db, $beforeAuditCount, 'login', 'user_session', (int) $smokeTechnicianId), 'Missing technician login audit entry');
+        assertTrue(auditEntryExists($db, $beforeAuditCount, 'logout', 'user_session', (int) $smokeTechnicianId), 'Missing technician logout audit entry');
         echo "[PASS] Audit logs recorded login, site changes, sync inserts, media events, repair events, and logout\n";
 
         $afterCount = fetchTransactionCount($db);
-        assertTrue(($afterCount - $beforeCount) >= 33, 'Transaction log count did not increase as expected');
+        assertTrue(($afterCount - $beforeCount) >= 40, 'Transaction log count did not increase as expected');
         echo "[PASS] Transaction logs recorded request activity\n";
 
         echo "Smoke suite passed. Transaction logs grew by " . ($afterCount - $beforeCount) . ".\n";
     } finally {
+        deleteSmokeUser($db, $smokeTechnicianId);
         deleteSmokeCustomer($db, $smokeCustomerId);
         deleteSmokeApiKey($db, $wrongScopeApiKeyId);
         deleteSmokeApiKey($db, $smokeApiKeyId);
