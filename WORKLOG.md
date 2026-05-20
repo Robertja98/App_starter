@@ -14,6 +14,8 @@ Reusable PHP + MySQL + PWA starter with centralized bootstrap, auth + CSRF, API-
 
 ## Recent Updates
 
+- Added [PRODUCTION_RUNBOOK.md](C:/Users/rober/OneDrive/0.5-Eclipse/Service%20App/PRODUCTION_RUNBOOK.md) as a one-page deployment and operations checklist for the validated hosting model (GoDaddy shared PHP backend + offline-capable tablet clients), including security semantics, migration checks, go-live validation, sync/idempotency verification, and day-2 operational monitoring.
+
 - Completed a final backend hardening pass for query and auth semantics: [ServiceVisitController.php](C:/Users/rober/OneDrive/0.5-Eclipse/Service%20App/app/Controllers/ServiceVisitController.php) now resolves related visit payload queries through an explicit allowlist instead of interpolating arbitrary table/column identifiers, and API-key auth now distinguishes wrong-scope requests as `403` with `API key lacks required scope` while preserving `401` for missing/invalid keys via [ApiKeyMiddleware.php](C:/Users/rober/OneDrive/0.5-Eclipse/Service%20App/app/Middleware/ApiKeyMiddleware.php) and [Controller.php](C:/Users/rober/OneDrive/0.5-Eclipse/Service%20App/app/Controllers/Controller.php). [backend_smoke.php](C:/Users/rober/OneDrive/0.5-Eclipse/Service%20App/tests/backend_smoke.php) now locks this 401/403 contract explicitly.
 
 - Extended admin-focused smoke coverage in [backend_smoke.php](C:/Users/rober/OneDrive/0.5-Eclipse/Service%20App/tests/backend_smoke.php) with role-aware recent-visit checks: admin can request another technician's recent visits, technicians are scoped to their own identity even when passing another technician_id, and smoke now asserts technician login/logout audit entries as part of the compliance baseline.

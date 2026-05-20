@@ -16,6 +16,8 @@ A reusable PHP + MySQL + PWA starter for applications that need centralized boot
 
 Use [TEMPLATE_GUIDE.md](C:/Users/rober/OneDrive/0.5-Eclipse/Service%20App/TEMPLATE_GUIDE.md) for the full extraction sequence and [LOCAL_TESTING_GUIDE.md](C:/Users/rober/OneDrive/0.5-Eclipse/Service%20App/LOCAL_TESTING_GUIDE.md) for local setup and validation.
 
+For GoDaddy production operations with offline tablets, use [PRODUCTION_RUNBOOK.md](C:/Users/rober/OneDrive/0.5-Eclipse/Service%20App/PRODUCTION_RUNBOOK.md).
+
 ## Project Structure
 
 ```
