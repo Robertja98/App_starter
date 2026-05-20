@@ -34,7 +34,7 @@ class ConsumableController extends Controller {
             } else {
                 // List all consumables
                 $stmt = $this->db->execute(
-                    "SELECT * FROM consumables WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                    "SELECT * FROM consumables_used ORDER BY created_at DESC LIMIT ? OFFSET ?",
                     [$limit, $offset],
                     'ii'
                 );
@@ -97,14 +97,10 @@ class ConsumableController extends Controller {
      */
     public function store() {
         $this->requireAuth();
-        // Skip CSRF if offline
-        if (!$this->getPost('offline_mode')) {
-            $this->requireCsrf();
-        }
+        $this->requireCsrf();
 
         $this->logPostArrival('ConsumableController::store', [
             'visit_id' => $this->getPost('visit_id', $this->getPost('service_visit_id')),
-            'offline' => (bool) $this->getPost('offline_mode'),
         ]);
 
         $model = new Consumable($this->db);

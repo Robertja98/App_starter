@@ -5,7 +5,7 @@
 
 class Measurement extends Model {
     protected $table = 'measurements';
-    protected $fillable = ['visit_id', 'equipment_id', 'measurement_type', 'value', 'unit', 'status'];
+    protected $fillable = ['visit_id', 'equipment_id', 'measurement_type', 'value', 'unit', 'status', 'idempotency_key'];
     
     /**
      * Validate measurement data.
@@ -57,5 +57,12 @@ class Measurement extends Model {
      */
     public function getByEquipmentAndVisit($equipmentId, $visitId) {
         return $this->where(['equipment_id' => $equipmentId, 'visit_id' => $visitId]);
+    }
+
+    /**
+     * Find a measurement by idempotency key.
+     */
+    public function findByIdempotencyKey($idempotencyKey) {
+        return $this->findWhere(['idempotency_key' => $idempotencyKey]);
     }
 }

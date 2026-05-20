@@ -5,7 +5,7 @@
 
 class Consumable extends Model {
     protected $table = 'consumables_used';
-    protected $fillable = ['visit_id', 'equipment_id', 'consumable_name', 'quantity_used', 'unit', 'reason', 'is_billable'];
+    protected $fillable = ['visit_id', 'equipment_id', 'consumable_name', 'quantity_used', 'unit', 'reason', 'is_billable', 'idempotency_key'];
     
     /**
      * Validate consumable data.
@@ -50,5 +50,12 @@ class Consumable extends Model {
      */
     public function getBillableByVisit($visitId, $limit = 50, $offset = 0) {
         return $this->where(['visit_id' => $visitId, 'is_billable' => 1], $limit, $offset);
+    }
+
+    /**
+     * Find a consumable by idempotency key.
+     */
+    public function findByIdempotencyKey($idempotencyKey) {
+        return $this->findWhere(['idempotency_key' => $idempotencyKey]);
     }
 }

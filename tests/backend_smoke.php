@@ -486,6 +486,18 @@ function runSmokeSuite(string $repoRoot, string $baseUrl): void
         assertTrue(($syncResponse['body']['message'] ?? null) === 'Valid API key required', 'Anonymous sync request returned the wrong error');
         echo "[PASS] Sync endpoint rejects missing auth\n";
 
+        $sessionSyncMissingCsrfResponse = request('POST', $baseUrl . '/api/sync', ['queue' => []], $cookieJar);
+        assertTrue($sessionSyncMissingCsrfResponse['status'] === 403, 'Session sync without CSRF should return 403');
+        assertTrue(($sessionSyncMissingCsrfResponse['body']['message'] ?? null) === 'Invalid CSRF token', 'Session sync without CSRF returned the wrong error');
+
+        $sessionSyncWithCsrfResponse = request('POST', $baseUrl . '/api/sync', [
+            'csrf_token' => $csrfToken,
+            'queue' => [],
+        ], $cookieJar);
+        assertTrue($sessionSyncWithCsrfResponse['status'] === 400, 'Session sync with CSRF should reach queue validation and return 400');
+        assertTrue(($sessionSyncWithCsrfResponse['body']['message'] ?? null) === 'Invalid or empty queue', 'Session sync with CSRF returned the wrong validation error');
+        echo "[PASS] Session-auth sync enforces CSRF\n";
+
         $wrongScopeSyncResponse = request(
             'POST',
             $baseUrl . '/api/sync',
@@ -549,6 +561,107 @@ function runSmokeSuite(string $repoRoot, string $baseUrl): void
         assertTrue($syncDuplicateResponse['status'] === 200, 'Duplicate sync request should return 200');
         assertTrue(($syncDuplicateResponse['body']['data']['results'][0]['status'] ?? null) === 'duplicate', 'Duplicate sync request did not report duplicate');
         echo "[PASS] Sync duplicate idempotency is enforced\n";
+
+        $syncMeasurementKey = 'backend-smoke-sync-measurement-' . bin2hex(random_bytes(4));
+        $syncConsumableKey = 'backend-smoke-sync-consumable-' . bin2hex(random_bytes(4));
+        $auditBeforeMeasurementAndConsumableSync = fetchAuditCount($db);
+
+        $syncMeasurementAndConsumableResponse = request(
+            'POST',
+            $baseUrl . '/api/sync',
+            [
+                'queue' => [
+                    [
+                        'type' => 'measurement',
+                        'action' => 'create',
+                        'data' => [
+                            'service_visit_id' => (int) $syncedVisitId,
+                            'equipment_id' => $smokeEquipmentId,
+                            'measurement_type' => $profile['measurement']['type'],
+                            'value' => $profile['measurement']['value'],
+                            'unit' => $profile['measurement']['unit'],
+                            'status' => $profile['measurement']['status'],
+                        ],
+                        'idempotency_key' => $syncMeasurementKey,
+                        'timestamp' => time(),
+                    ],
+                    [
+                        'type' => 'consumable',
+                        'action' => 'create',
+                        'data' => [
+                            'service_visit_id' => (int) $syncedVisitId,
+                            'equipment_id' => $smokeEquipmentId,
+                            'name' => $profile['consumable']['name'],
+                            'quantity_used' => $profile['consumable']['quantity_used'],
+                            'unit' => $profile['consumable']['unit'],
+                            'reason' => $profile['consumable']['reason'],
+                            'is_billable' => 1,
+                        ],
+                        'idempotency_key' => $syncConsumableKey,
+                        'timestamp' => time(),
+                    ],
+                ],
+            ],
+            $anonymousCookies,
+            ['X-API-Key: ' . $smokeApiKey['api_key']]
+        );
+        assertTrue($syncMeasurementAndConsumableResponse['status'] === 200, 'Sync measurement/consumable request should return 200');
+        $syncMeasurementResult = $syncMeasurementAndConsumableResponse['body']['data']['results'][0] ?? [];
+        $syncConsumableResult = $syncMeasurementAndConsumableResponse['body']['data']['results'][1] ?? [];
+        assertTrue(($syncMeasurementResult['status'] ?? null) === 'success', 'Sync measurement create did not report success');
+        assertTrue(is_numeric($syncMeasurementResult['id'] ?? null), 'Sync measurement create did not return an id');
+        assertTrue(($syncConsumableResult['status'] ?? null) === 'success', 'Sync consumable create did not report success');
+        assertTrue(is_numeric($syncConsumableResult['id'] ?? null), 'Sync consumable create did not return an id');
+        $syncMeasurementId = (int) ($syncMeasurementResult['id'] ?? 0);
+        $syncConsumableId = (int) ($syncConsumableResult['id'] ?? 0);
+        assertTrue(auditEntryExists($db, $auditBeforeMeasurementAndConsumableSync, 'insert', 'measurement', $syncMeasurementId), 'Sync measurement insert should create an audit log row');
+        assertTrue(auditEntryExists($db, $auditBeforeMeasurementAndConsumableSync, 'insert', 'consumable', $syncConsumableId), 'Sync consumable insert should create an audit log row');
+
+        $syncMeasurementAndConsumableDuplicateResponse = request(
+            'POST',
+            $baseUrl . '/api/sync',
+            [
+                'queue' => [
+                    [
+                        'type' => 'measurement',
+                        'action' => 'create',
+                        'data' => [
+                            'service_visit_id' => (int) $syncedVisitId,
+                            'equipment_id' => $smokeEquipmentId,
+                            'measurement_type' => $profile['measurement']['type'],
+                            'value' => $profile['measurement']['value'],
+                            'unit' => $profile['measurement']['unit'],
+                            'status' => $profile['measurement']['status'],
+                        ],
+                        'idempotency_key' => $syncMeasurementKey,
+                        'timestamp' => time(),
+                    ],
+                    [
+                        'type' => 'consumable',
+                        'action' => 'create',
+                        'data' => [
+                            'service_visit_id' => (int) $syncedVisitId,
+                            'equipment_id' => $smokeEquipmentId,
+                            'name' => $profile['consumable']['name'],
+                            'quantity_used' => $profile['consumable']['quantity_used'],
+                            'unit' => $profile['consumable']['unit'],
+                            'reason' => $profile['consumable']['reason'],
+                            'is_billable' => 1,
+                        ],
+                        'idempotency_key' => $syncConsumableKey,
+                        'timestamp' => time(),
+                    ],
+                ],
+            ],
+            $anonymousCookies,
+            ['X-API-Key: ' . $smokeApiKey['api_key']]
+        );
+        assertTrue($syncMeasurementAndConsumableDuplicateResponse['status'] === 200, 'Duplicate sync measurement/consumable request should return 200');
+        $syncMeasurementDuplicateResult = $syncMeasurementAndConsumableDuplicateResponse['body']['data']['results'][0] ?? [];
+        $syncConsumableDuplicateResult = $syncMeasurementAndConsumableDuplicateResponse['body']['data']['results'][1] ?? [];
+        assertTrue(($syncMeasurementDuplicateResult['status'] ?? null) === 'duplicate', 'Duplicate sync measurement request should report duplicate');
+        assertTrue(($syncConsumableDuplicateResult['status'] ?? null) === 'duplicate', 'Duplicate sync consumable request should report duplicate');
+        echo "[PASS] Sync measurement and consumable idempotency is enforced with audit rows\n";
 
         $syncRepairAndMediaResponse = request(
             'POST',

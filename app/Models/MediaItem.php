@@ -5,7 +5,7 @@
 
 class MediaItem extends Model {
     protected $table = 'media_items';
-    protected $fillable = ['visit_id', 'equipment_id', 'media_type', 'original_filename', 'stored_filename', 'file_path', 'file_size', 'mime_type', 'is_uploaded'];
+    protected $fillable = ['visit_id', 'equipment_id', 'media_type', 'original_filename', 'stored_filename', 'file_path', 'file_size', 'mime_type', 'is_uploaded', 'idempotency_key'];
     
     /**
      * Validate media item data.
@@ -74,5 +74,12 @@ class MediaItem extends Model {
      */
     public function getUnuploaded() {
         return $this->where(['is_uploaded' => 0], 50);
+    }
+
+    /**
+     * Find a media item by idempotency key.
+     */
+    public function findByIdempotencyKey($idempotencyKey) {
+        return $this->findWhere(['idempotency_key' => $idempotencyKey]);
     }
 }

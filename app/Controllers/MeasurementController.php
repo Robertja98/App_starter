@@ -34,7 +34,7 @@ class MeasurementController extends Controller {
             } elseif ($equipmentId && is_numeric($equipmentId)) {
                 // Get latest measurements for this equipment
                 $stmt = $this->db->execute(
-                    "SELECT * FROM measurements WHERE equipment_id = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                    "SELECT * FROM measurements WHERE equipment_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
                     [$equipmentId, $limit, $offset],
                     'iii'
                 );
@@ -97,14 +97,10 @@ class MeasurementController extends Controller {
      */
     public function store() {
         $this->requireAuth();
-        // Skip CSRF if offline
-        if (!$this->getPost('offline_mode')) {
-            $this->requireCsrf();
-        }
+        $this->requireCsrf();
 
         $this->logPostArrival('MeasurementController::store', [
             'visit_id' => $this->getPost('visit_id', $this->getPost('service_visit_id')),
-            'offline' => (bool) $this->getPost('offline_mode'),
         ]);
 
         $model = new Measurement($this->db);

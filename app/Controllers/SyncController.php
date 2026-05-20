@@ -62,7 +62,9 @@ class SyncController extends Controller {
      */
     public function sync() {
         $authMode = $this->requireAuthOrApiKey(['sync:write']);
-        // CSRF check skipped for offline sync (idempotency keys are the safety mechanism)
+        if ($authMode === 'session') {
+            $this->requireCsrf();
+        }
 
         $this->logPostArrival('SyncController::sync', [
             'auth_mode' => $authMode,
@@ -132,16 +134,16 @@ class SyncController extends Controller {
                     $result = $this->syncVisit($action, $data, $idempotencyKey, $result);
                     break;
                 case 'measurement':
-                    $result = $this->syncMeasurement($action, $data, $result);
+                    $result = $this->syncMeasurement($action, $data, $idempotencyKey, $result);
                     break;
                 case 'consumable':
-                    $result = $this->syncConsumable($action, $data, $result);
+                    $result = $this->syncConsumable($action, $data, $idempotencyKey, $result);
                     break;
                 case 'repair':
                     $result = $this->syncRepair($action, $data, $result);
                     break;
                 case 'media':
-                    $result = $this->syncMedia($action, $data, $result);
+                    $result = $this->syncMedia($action, $data, $idempotencyKey, $result);
                     break;
                 default:
                     $result['message'] = "Unknown queue item type: $type";
@@ -193,14 +195,37 @@ class SyncController extends Controller {
     /**
      * Sync measurement
      */
-    private function syncMeasurement($action, $data, $result) {
+    private function syncMeasurement($action, $data, $idempotencyKey, $result) {
         $model = new Measurement($this->db);
 
         if ($action === 'create') {
-            $id = $model->insert($data);
+            if ($idempotencyKey) {
+                $existing = $model->findByIdempotencyKey($idempotencyKey);
+                if ($existing) {
+                    $result['status'] = 'duplicate';
+                    $result['id'] = $existing['id'];
+                    return $result;
+                }
+            }
+
+            $measurement = $this->normalizeSyncMeasurementData($data);
+            $measurement['idempotency_key'] = $idempotencyKey;
+            $errors = $model->validate($measurement);
+            if (!empty($errors)) {
+                $result['message'] = 'Validation failed';
+                $result['errors'] = $errors;
+                return $result;
+            }
+
+            $id = $model->insert($measurement);
             if ($id) {
                 $result['status'] = 'success';
                 $result['id'] = $id;
+                $createdMeasurement = $model->find($id);
+                $this->auditAction('insert', 'measurement', $id, null, $createdMeasurement, [
+                    'controller' => static::class,
+                    'source' => 'sync',
+                ]);
             } else {
                 $result['message'] = 'Failed to create measurement';
             }
@@ -214,14 +239,37 @@ class SyncController extends Controller {
     /**
      * Sync consumable
      */
-    private function syncConsumable($action, $data, $result) {
+    private function syncConsumable($action, $data, $idempotencyKey, $result) {
         $model = new Consumable($this->db);
 
         if ($action === 'create') {
-            $id = $model->insert($data);
+            if ($idempotencyKey) {
+                $existing = $model->findByIdempotencyKey($idempotencyKey);
+                if ($existing) {
+                    $result['status'] = 'duplicate';
+                    $result['id'] = $existing['id'];
+                    return $result;
+                }
+            }
+
+            $consumable = $this->normalizeSyncConsumableData($data);
+            $consumable['idempotency_key'] = $idempotencyKey;
+            $errors = $model->validate($consumable);
+            if (!empty($errors)) {
+                $result['message'] = 'Validation failed';
+                $result['errors'] = $errors;
+                return $result;
+            }
+
+            $id = $model->insert($consumable);
             if ($id) {
                 $result['status'] = 'success';
                 $result['id'] = $id;
+                $createdConsumable = $model->find($id);
+                $this->auditAction('insert', 'consumable', $id, null, $createdConsumable, [
+                    'controller' => static::class,
+                    'source' => 'sync',
+                ]);
             } else {
                 $result['message'] = 'Failed to create consumable';
             }
@@ -269,13 +317,23 @@ class SyncController extends Controller {
     /**
      * Sync media (file data stored base64 in queue - tablet handles actual file)
      */
-    private function syncMedia($action, $data, $result) {
+    private function syncMedia($action, $data, $idempotencyKey, $result) {
         $model = new MediaItem($this->db);
 
         if ($action === 'create') {
+            if ($idempotencyKey) {
+                $existing = $model->findByIdempotencyKey($idempotencyKey);
+                if ($existing) {
+                    $result['status'] = 'duplicate';
+                    $result['id'] = $existing['id'];
+                    return $result;
+                }
+            }
+
             // Media from offline queue is metadata only
             // Actual file upload happens via separate /api/media/upload endpoint
             $media = $this->normalizeSyncMediaData($data);
+            $media['idempotency_key'] = $idempotencyKey;
             $errors = $model->validate($media);
             if (!empty($errors)) {
                 $result['message'] = 'Validation failed';
@@ -311,6 +369,29 @@ class SyncController extends Controller {
             'priority' => $data['priority'] ?? 'medium',
             'estimated_cost' => $data['estimated_cost'] ?? null,
             'status' => $data['status'] ?? 'recommended',
+        ];
+    }
+
+    private function normalizeSyncMeasurementData($data) {
+        return [
+            'visit_id' => $data['visit_id'] ?? ($data['service_visit_id'] ?? null),
+            'equipment_id' => $data['equipment_id'] ?? null,
+            'measurement_type' => $data['measurement_type'] ?? null,
+            'value' => $data['value'] ?? null,
+            'unit' => $data['unit'] ?? null,
+            'status' => $data['status'] ?? 'normal',
+        ];
+    }
+
+    private function normalizeSyncConsumableData($data) {
+        return [
+            'visit_id' => $data['visit_id'] ?? ($data['service_visit_id'] ?? null),
+            'equipment_id' => $data['equipment_id'] ?? null,
+            'consumable_name' => $data['consumable_name'] ?? ($data['name'] ?? null),
+            'quantity_used' => $data['quantity_used'] ?? null,
+            'unit' => $data['unit'] ?? 'unit',
+            'reason' => $data['reason'] ?? null,
+            'is_billable' => array_key_exists('is_billable', $data) ? (int) $data['is_billable'] : 1,
         ];
     }
 
