@@ -50,24 +50,13 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // API requests: network first, fallback to offline queue
+    // API requests: network only to avoid serving stale authenticated responses from cache.
     if (url.pathname.startsWith('/api/')) {
         event.respondWith(
             fetch(request)
-                .then((response) => {
-                    // Cache successful API responses
-                    if (response.ok) {
-                        const responseClone = response.clone();
-                        caches.open(CACHE_NAME).then((cache) => {
-                            cache.put(request, responseClone);
-                        });
-                    }
-                    return response;
-                })
+                .then((response) => response)
                 .catch(() => {
-                    // Offline: attempt to serve from cache
-                    return caches.match(request)
-                        .then((response) => response || new Response('Offline', { status: 503 }));
+                    return new Response('Offline', { status: 503 });
                 })
         );
         return;
